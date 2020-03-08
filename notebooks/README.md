@@ -66,7 +66,7 @@ sample_data_df.head()
 
 
 <div>
-<style scoped>
+<style>
     .dataframe tbody tr th:only-of-type {
         vertical-align: middle;
     }
