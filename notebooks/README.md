@@ -18,7 +18,7 @@ from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 ```
 
-<b>The dataset can be downloaded into a csv file using the [`boto3`](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) module. The function `download_s3_file` will do this for you. Here, I have downloaded a very small sample dataset as an example. 
+<b>The dataset can be downloaded into a csv file using the [`boto3`](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html) module. The function `download_s3_file` will do this for you. Here, I have downloaded a very small sample dataset as an example.
 
 
 ```python
@@ -30,9 +30,9 @@ ACCESS_KEY = os.getenv("ACCESS_KEY")
 
 ```python
 def download_s3_file(access_key, secret_key, bucket, key, output_folder_name, output_file_name):
-    
+
     s3 = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key)
-    
+
     with open(output_folder_name + output_file_name , 'wb') as write_file:
         try:
             s3.download_fileobj(bucket, key, write_file)
@@ -66,19 +66,6 @@ sample_data_df.head()
 
 
 <div>
-<style scoped>
-    .dataframe tbody tr th:only-of-type {
-        vertical-align: middle;
-    }
-
-    .dataframe tbody tr th {
-        vertical-align: top;
-    }
-
-    .dataframe thead th {
-        text-align: right;
-    }
-</style>
 <table border="1" class="dataframe">
   <thead>
     <tr style="text-align: right;">
