@@ -1,82 +1,95 @@
-# -*- coding: utf-8 -*-
+
+# libraries to access variables
+import os
+from dotenv import load_dotenv, find_dotenv
+# libraries for data manipulation
+import pandas as pd
+import numpy as np
+# libraries for spark
+import findspark
+import pyspark
+from pyspark import SparkContext, SparkConf
+from pyspark.sql import SparkSession
+from pyspark.sql.types import *
+#logging/error libraries
 import logging
-import os.path
-import boto3
-import gzip
-from pathlib import Path
-from dotenv import find_dotenv, load_dotenv
-from botocore.exceptions import ClientError
 
 class Error(Exception):
     pass
 
-class InputError(Error):
-    def __init__(self, message, accepted_values):
+class EnvironmentError(Error):
+    def __init__(self, message):
         logging.error(message)
-        logging.info(accepted_values)
 
-
-def check_zipped(file_name):
-    if file_name.endswith(('.gz')):
-        return True
-    elif file_name.endswith(('.tsv', '.csv')):
-        return False
+def check_env_variables():
+    if [i in os.environ for i in ['SPARK_HOME', 'JAVA_HOME', 'HADOOP_HOME']] == [1, 1, 1]:
+        logging.info('All environment variables present')
     else:
-        raise InputError('Input file is incompatible with program',
-                        'Accepted file types are .gz, .tsv and .csv')
+        raise EnvironmentError('Cannot find SPARK_HOME, JAVA_HOME or HADOOP_HOME in env variables')
 
-def unzip(input_file_name, output_file_name):
-    with gzip.open(input_file_name, 'rb') as in_file:
-        with open(output_file_name, 'wb') as out_file:
-            out_file.write(in_file.read())
+def spark_initialize():
+    try:
+        findspark.init()
+    except Exception as e:
+        logging.error('Error with finding spark:' + e)
 
-def download_s3_file(access_key, secret_key, bucket, key, output_file_name):
-    """Imports data from S3 bucket
-    """
-    s3 = boto3.client('s3', aws_access_key_id=access_key,
-                        aws_secret_access_key=secret_key)
+    conf = SparkConf().setAll([('spark.executor.memory', '4g'), ('spark.app.name', 'amzn_reviews')]) 
+    spark = SparkSession.builder.config(conf=conf).getOrCreate()
+    return spark
 
-    with open(output_file_name , 'wb') as write_file:
-        try:
-            s3.download_fileobj(bucket, key, write_file)
-            logging.info('File downloaded succesfully at {}'.format(output_file_name))
-        except ClientError as e:
-            logging.error(e, exc_info=True)
+def spark_s3_setup(spark, ACCESS_KEY, SECRET_KEY):
+    spark._jsc.hadoopConfiguration().set("fs.s3a.access.key", ACCESS_KEY)
+    spark._jsc.hadoopConfiguration().set("fs.s3a.secret.key", SECRET_KEY)
+    spark._jsc.hadoopConfiguration().set("fs.s3a.impl","org.apache.hadoop.fs.s3a.S3AFileSystem")
+    spark._jsc.hadoopConfiguration().set("fs.s3a.aws.credentials.provider","org.apache.hadoop.fs.s3a.BasicAWSCredentialsProvider")
 
-def main():
-    """ Runs data processing scripts to turn raw data from (../raw) into
-        cleaned data ready to be analyzed (saved in ../processed).
-    """
+def load_data(spark, url, file_fmt, sep):
+    try:
+        data = spark.read.load(url, format=file_fmt, sep=sep, inferSchema="true", header="true")
+        return data
+    except Exception as e:
+        logging.error(e)
+
+def check_schema(data):
+    true_schema = StructType([
+        StructField('marketplace', StringType()),
+        StructField('customer_id', IntegerType()),
+        StructField('review_id', StringType()),
+        StructField('product_id', StringType()),
+        StructField('product_parent', IntegerType()),
+        StructField('product_title', StringType()),
+        StructField('product_category', StringType()),
+        StructField('star_rating', IntegerType()),
+        StructField('helpful_votes', IntegerType()),
+        StructField('total_votes', IntegerType()),
+        StructField('vine', StringType()),
+        StructField('verified_purchase', StringType()),
+        StructField('review_headline', StringType()),
+        StructField('review_body', StringType()),
+        StructField('review_date', StringType()),])
+    assert (data.schema.fields == true_schema.fields), "Schema does not match amazon reviews schema"
+
+def get_data():
+
     logger = logging.getLogger(__name__)
-    logger.info('Downloading data from S3 bucket')
 
+    # load up the .env entries as environment variables
+    load_dotenv(find_dotenv())
     SECRET_KEY = os.getenv("SECRET_KEY")
     ACCESS_KEY = os.getenv("ACCESS_KEY")
 
     # define bucket and key name to identify location where file is stored
-    bucket = "amazon-reviews-pds"
+    bucket = "amazon-reviews-pds/"
     key = "tsv/amazon_reviews_us_Electronics_v1_00.tsv.gz"
 
-    # define output destination for sample data file
-    output_zipped_file = 'data/raw/amazon_review_data.gz'
-    output_file = 'data/raw/amazon_review_data.tsv'
+    check_env_variables()
+    spark = spark_initialize()
+    logging.info('Spark initialized')
+    spark_s3_setup(spark, ACCESS_KEY, SECRET_KEY)
+    logging.info('Spark S3 variables set')
+    review_data = load_data(spark, "s3a://" + bucket + key, "csv", "\t")
+    check_schema(review_data)
+    logging.info('Dataset loaded successfully')
+    review_data.cache()
 
-    download_s3_file(ACCESS_KEY, SECRET_KEY, bucket, key, output_zipped_file)
-
-    if check_zipped(output_zipped_file):
-        unzip(output_zipped_file, output_file)
-        logging.info('File unzipped successfully at {}'.format(output_file))
-
-
-if __name__ == '__main__':
-    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    logging.basicConfig(level=logging.INFO, format=log_fmt)
-
-    # not used in this stub but often useful for finding various files
-    project_dir = Path(__file__).resolve().parents[2]
-
-    # find .env automagically by walking up directories until it's found, then
-    # load up the .env entries as environment variables
-    load_dotenv(find_dotenv())
-
-    main()
+    return review_data
