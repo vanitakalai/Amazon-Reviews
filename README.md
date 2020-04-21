@@ -1,7 +1,13 @@
 Amazon Reviews
 ==============================
 
-Using text from Amazon reviews to predict ratings
+
+Using text from Amazon reviews to predict ratings. This is a multilabel classification problem.
+
+See /notebooks for implementation of the model through jupyter notebook and Google Colab. See /reports for detailed write-up of the project.
+
+The /src folder includes source code required to download and clean the dataset but does not include code to run the models. This has so far only been implemented in Google Colab due to the need for a GPU. 
+
 
 Project Organization
 ------------
@@ -19,14 +25,11 @@ Project Organization
     │
     ├── models             <- Trained and serialized models, model predictions, or model summaries
     │
-    ├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-    │                         the creator's initials, and a short `-` delimited description, e.g.
-    │                         `1.0-jqp-initial-data-exploration`.
+    ├── notebooks          <- Jupyter notebooks
     │
     ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
     │
     ├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-    │   └── figures        <- Generated graphics and figures to be used in reporting
     │
     ├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
     │                         generated with `pip freeze > requirements.txt`
