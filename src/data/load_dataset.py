@@ -33,7 +33,8 @@ def spark_initialize():
     except Exception as e:
         logging.error('Error with finding spark:' + e)
 
-    conf = SparkConf().setAll([('spark.executor.memory', '4g'), ('spark.app.name', 'amzn_reviews')]) 
+    conf = SparkConf().setAll([('spark.executor.memory', '4g'), ('spark.driver.memory', '4g'),
+                            ('spark.app.name', 'amzn_reviews')])
     spark = SparkSession.builder.config(conf=conf).getOrCreate()
     return spark
 
@@ -90,6 +91,5 @@ def get_data():
     review_data = load_data(spark, "s3a://" + bucket + key, "csv", "\t")
     check_schema(review_data)
     logging.info('Dataset loaded successfully')
-    review_data.cache()
 
-    return review_data
+    return spark, review_data

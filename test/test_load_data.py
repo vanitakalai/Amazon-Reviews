@@ -1,15 +1,14 @@
 import pytest
 import os
-import gzip
-import mock
 from pyspark.sql import Row
 from pyspark.sql.types import *
 from src.data.load_dataset import check_env_variables, check_schema, EnvironmentError
 
 
-def test_env():
+def test_env(monkeypatch):
+    monkeypatch.delenv("SPARK_HOME", raising=False)
+
     with pytest.raises(EnvironmentError):
-        del os.environ['SPARK_HOME']
         check_env_variables()
 
 
@@ -56,6 +55,7 @@ def test_schema(sql_context):
         check_schema(mock_dataframe_1)
         check_schema(mock_dataframe_2)
         check_schema(mock_dataframe_3)
+
 
 if __name__ == '__main__':
     pytest.main()

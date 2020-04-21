@@ -1,13 +1,14 @@
 from data.load_dataset import get_data
 from data.clean_dataset import clean_data
 import logging
-#import clean_dataset
+import os.path
 
 
 def main():
 
-    data = get_data()
-    cleaned_data = clean_data(data)
+    spark, data = get_data()
+    filepath = clean_data(data)
+    spark.stop()
 
 
 if __name__ == '__main__':
